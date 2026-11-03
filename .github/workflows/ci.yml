@@ -12,10 +12,10 @@ jobs:
     name: Tests, lint, build, leak check
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # the leak check reads the whole history
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Unit tests
@@ -33,7 +33,7 @@ jobs:
     name: Generated configs pass sing-box, Caddy and nft checks
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install sing-box and Caddy from their official repositories
         run: |
           sudo install -d -m 755 /etc/apt/keyrings
