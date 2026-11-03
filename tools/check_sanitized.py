@@ -102,9 +102,25 @@ def scan_text(text: str, rel: str, denied: list[str]) -> list[str]:
 def scan_history(denied: list[str]) -> list[str]:
     out = subprocess.run(["git", "log", "--all", "-p", "--no-color", "--format=commit %H%n%an <%ae>%n%B"],
                          cwd=ROOT, capture_output=True, text=True, errors="replace").stdout
-    # Only added lines and commit metadata matter; removed lines are history too.
-    added = "\n".join(line for line in out.splitlines() if not line.startswith(("---", "+++")))
-    return [f.replace("history:", "git history:", 1) for f in scan_text(added, "history", denied)]
+    # Group every diff line (added and removed: both are history) by file, so the
+    # per-file allowances apply; commit metadata goes under "commit".
+    parts: dict[str, list[str]] = {}
+    rel = "commit"
+    for line in out.splitlines():
+        if line.startswith("commit "):
+            rel = "commit"
+        elif line.startswith("diff --git "):
+            rel = line.rsplit(" b/", 1)[-1]
+            continue
+        elif line.startswith(("---", "+++", "index ", "@@")):
+            continue
+        elif rel != "commit" and line[:1] in "+- ":
+            line = line[1:]
+        parts.setdefault(rel, []).append(line)
+    found = []
+    for rel, lines in parts.items():
+        found += [f"git history: {f}" for f in scan_text("\n".join(lines), rel, denied)]
+    return found
 
 
 def main() -> int:
