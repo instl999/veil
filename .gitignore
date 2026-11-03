@@ -1,0 +1,27 @@
+# Build output: the installer is built by CI and attached to GitHub releases.
+dist/
+
+# Your own personal details for tools/check_sanitized.py. Never commit it.
+.sanitize-denylist
+
+# Anything that could hold real keys, links or captures.
+*.key
+*.pem
+!server/veil/cloudflare-origin-pull-ca.pem
+state.json
+veil-backup-*.tar.gz
+*.pcap
+*.pcapng
+*.jsonl
+profile.json
+report.md
+
+# Python and editors
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

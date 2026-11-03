@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests, lint, build, leak check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the leak check reads the whole history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Shell lint
+        run: shellcheck -S warning server/install.sh install.sh tools/validate_configs.sh
+      - name: Build the single-file installer
+        run: |
+          python tools/build.py
+          bash -n dist/veil-install.sh
+      - name: No secrets or personal data (files and history)
+        run: python tools/check_sanitized.py --history
+
+  configs:
+    name: Generated configs pass sing-box, Caddy and nft checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install sing-box and Caddy from their official repositories
+        run: |
+          sudo install -d -m 755 /etc/apt/keyrings
+          sudo curl -fsSL https://sing-box.app/gpg.key -o /etc/apt/keyrings/sagernet.asc
+          echo "deb [signed-by=/etc/apt/keyrings/sagernet.asc] https://deb.sagernet.org/ * *" \
+            | sudo tee /etc/apt/sources.list.d/sagernet.list
+          curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key \
+            | sudo gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+          curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt \
+            | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+          sudo apt-get update -q
+          sudo apt-get install -y -q sing-box caddy nftables
+          sing-box version | head -1
+          caddy version
+      - name: Validate
+        run: sudo -E bash tools/validate_configs.sh

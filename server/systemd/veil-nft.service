@@ -1,0 +1,13 @@
+[Unit]
+Description=veil Hysteria2 port-hopping rules
+After=network-pre.target
+Before=veil-singbox.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/veil/veil.nft
+ExecStop=-/usr/sbin/nft delete table inet veil
+
+[Install]
+WantedBy=multi-user.target

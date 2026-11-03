@@ -1,0 +1,48 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching server/veil/__init__.py) to publish
+# veil-install.sh and its checksum as a GitHub release. `veil update` and the
+# one-line install command download from the latest release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Version matches the tag
+        run: |
+          version="$(python -c 'import sys; sys.path.insert(0, "server"); import veil; print(veil.__version__)')"
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != version $version"; exit 1; }
+      - name: Tests and leak check
+        run: |
+          python -m unittest discover -s tests
+          python tools/check_sanitized.py --history
+      - name: Build
+        run: |
+          python tools/build.py
+          bash -n dist/veil-install.sh
+          (cd dist && sha256sum -c veil-install.sh.sha256)
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            $0 ~ "^## \\[?" v "\\]?( |$)" {on=1; next}
+            on && /^## / {exit}
+            on {print}' CHANGELOG.md > notes.md
+          test -s notes.md || echo "See CHANGELOG.md" > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/veil-install.sh dist/veil-install.sh.sha256 \
+            --title "veil $GITHUB_REF_NAME" --notes-file notes.md

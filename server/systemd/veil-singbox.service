@@ -1,0 +1,22 @@
+[Unit]
+Description=veil proxy (sing-box)
+After=network-online.target caddy.service
+Wants=network-online.target
+
+[Service]
+User=veil
+Group=veil
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=@SINGBOX@ run -c /etc/veil/sing-box.json
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/etc/veil
+
+[Install]
+WantedBy=multi-user.target
